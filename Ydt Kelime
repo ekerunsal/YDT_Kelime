@@ -1,0 +1,450 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>YDT Kelime Pratik</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    font-family: -apple-system, "Segoe UI", Roboto, Arial, sans-serif;
+    background: #0f172a; color: #e2e8f0; min-height: 100vh;
+    display: flex; justify-content: center; padding: 20px;
+  }
+  .app { width: 100%; max-width: 720px; }
+  header { text-align: center; margin-bottom: 20px; }
+  header h1 { font-size: 1.6rem; color: #38bdf8; }
+  header p { color: #94a3b8; font-size: .9rem; margin-top: 4px; }
+  .tabs { display: flex; gap: 8px; margin-bottom: 16px; }
+  .tabs button {
+    flex: 1; padding: 10px; border: none; border-radius: 8px;
+    background: #1e293b; color: #cbd5e1; cursor: pointer; font-weight: 600;
+    transition: .2s;
+  }
+  .tabs button.active { background: #38bdf8; color: #0f172a; }
+  .card {
+    background: #1e293b; border-radius: 14px; padding: 20px;
+    box-shadow: 0 4px 20px rgba(0,0,0,.3);
+  }
+  .word { font-size: 1.8rem; color: #38bdf8; font-weight: 700; }
+  .pos { font-size: .85rem; color: #94a3b8; font-style: italic; margin-left: 8px; }
+  .tr { margin-top: 6px; font-size: 1.05rem; color: #fbbf24; }
+  .block { margin-top: 14px; }
+  .block h3 { font-size: .8rem; text-transform: uppercase; color: #64748b; letter-spacing: .5px; }
+  .block p { margin-top: 6px; line-height: 1.5; color: #e2e8f0; }
+  .example { font-style: italic; color: #cbd5e1; }
+  .example b { color: #38bdf8; font-style: normal; }
+  .nav { display: flex; gap: 10px; margin-top: 20px; }
+  .nav button {
+    flex: 1; padding: 12px; border: none; border-radius: 8px;
+    background: #334155; color: #e2e8f0; cursor: pointer; font-weight: 600;
+  }
+  .nav button.primary { background: #38bdf8; color: #0f172a; }
+  .nav button:disabled { opacity: .4; cursor: not-allowed; }
+  .counter { text-align: center; color: #64748b; margin-top: 12px; font-size: .85rem; }
+  /* Quiz */
+  .qtype { display: inline-block; background: #0ea5e9; color: #0f172a;
+           padding: 3px 10px; border-radius: 20px; font-size: .75rem; font-weight: 700; }
+  .stem { margin: 14px 0; font-size: 1.05rem; line-height: 1.6; }
+  .options { display: flex; flex-direction: column; gap: 8px; }
+  .options button {
+    text-align: left; padding: 12px 14px; border: 1px solid #334155;
+    background: #0f172a; color: #e2e8f0; border-radius: 8px;
+    cursor: pointer; font-size: .95rem; transition: .15s;
+  }
+  .options button:hover { border-color: #38bdf8; }
+  .options button.correct { background: #16a34a; border-color: #16a34a; }
+  .options button.wrong { background: #dc2626; border-color: #dc2626; }
+  .options button:disabled { cursor: default; }
+  .feedback { margin-top: 14px; padding: 12px; border-radius: 8px;
+              background: #0f172a; border-left: 4px solid #38bdf8; font-size: .9rem; }
+  .feedback.ok { border-color: #16a34a; }
+  .feedback.no { border-color: #dc2626; }
+  .score { text-align: center; font-size: 1.1rem; margin-top: 10px; color: #38bdf8; }
+  .progress { height: 6px; background: #0f172a; border-radius: 3px; margin-bottom: 14px; overflow: hidden; }
+  .progress > div { height: 100%; background: #38bdf8; transition: width .3s; }
+  .review-item { padding: 10px; border-bottom: 1px solid #334155; font-size: .9rem; }
+  .review-item b { color: #fbbf24; }
+  .review-item span { color: #94a3b8; }
+  .empty { color: #64748b; text-align: center; padding: 20px; }
+</style>
+</head>
+<body>
+<div class="app">
+  <header>
+    <h1>YDT Kelime Pratik</h1>
+    <p>Öğren · Test Et · Tekrar Et</p>
+  </header>
+
+  <div class="tabs">
+    <button id="tab-learn" class="active">📚 Öğren</button>
+    <button id="tab-quiz">📝 Test</button>
+    <button id="tab-review">🔁 Tekrar (<span id="reviewCount">0</span>)</button>
+  </div>
+
+  <div id="view-learn" class="card"></div>
+  <div id="view-quiz" class="card" style="display:none"></div>
+  <div id="view-review" class="card" style="display:none"></div>
+</div>
+
+<script>
+/* ---------------- VERİ ---------------- */
+const WORDS = [
+  { w:"abandon", pos:"v", tr:"terk etmek, vazgeçmek",
+    cue:"'a-band-on' → grubu bırakıp gitmek. Ayrılma/terk etme çağrışımı.",
+    ex:"They had to <b>abandon</b> the project due to lack of funding.",
+    syn:["give up","quit","forsake"], ant:["continue","maintain","pursue"] },
+  { w:"significant", pos:"adj", tr:"önemli, kayda değer",
+    cue:"'sign' (işaret) → dikkat çeken, işaret eden şey önemlidir.",
+    ex:"There has been a <b>significant</b> increase in enrollment this year.",
+    syn:["considerable","substantial","notable"], ant:["insignificant","trivial","minor"] },
+  { w:"reluctant", pos:"adj", tr:"isteksiz, gönülsüz",
+    cue:"'re-luck-tant' → şansına güvenmeyen, geri duran kişi.",
+    ex:"She was <b>reluctant</b> to leave her hometown.",
+    syn:["unwilling","hesitant","disinclined"], ant:["eager","willing","keen"] },
+  { w:"deteriorate", pos:"v", tr:"kötüleşmek, bozulmak",
+    cue:"'deter' (caydırmak) + '-iorate' → durum caydırıcı hâle gelir, bozulur.",
+    ex:"His health began to <b>deteriorate</b> rapidly.",
+    syn:["worsen","decline","degenerate"], ant:["improve","recover","enhance"] },
+  { w:"inevitable", pos:"adj", tr:"kaçınılmaz",
+    cue:"'in-' (değil) + 'evitable' (kaçınılabilir) → kaçınılamaz.",
+    ex:"Conflict was <b>inevitable</b> given their opposing views.",
+    syn:["unavoidable","certain","inescapable"], ant:["avoidable","preventable"] },
+  { w:"comprehensive", pos:"adj", tr:"kapsamlı, kapsayıcı",
+    cue:"'comprehend' (kavramak) kökü → her şeyi kavrayan.",
+    ex:"The report offers a <b>comprehensive</b> analysis of the market.",
+    syn:["thorough","extensive","all-inclusive"], ant:["partial","limited","superficial"] },
+  { w:"enhance", pos:"v", tr:"artırmak, geliştirmek",
+    cue:"'hance' → yükseğe çıkarmak; kaliteyi yükseltmek.",
+    ex:"Regular exercise can <b>enhance</b> your mood.",
+    syn:["improve","boost","augment"], ant:["reduce","impair","diminish"] },
+  { w:"advocate", pos:"v/n", tr:"savunmak; savunucu",
+    cue:"'ad-voc-ate' → sesini (voc) yükseltip desteklemek.",
+    ex:"She <b>advocates</b> for renewable energy policies.",
+    syn:["support","promote","champion"], ant:["oppose","discourage"] },
+  { w:"ambiguous", pos:"adj", tr:"belirsiz, muğlak",
+    cue:"'ambi-' (iki) → iki anlama gelen, net olmayan.",
+    ex:"His answer was deliberately <b>ambiguous</b>.",
+    syn:["vague","unclear","equivocal"], ant:["clear","explicit","unambiguous"] },
+  { w:"compensate", pos:"v", tr:"telafi etmek, karşılamak",
+    cue:"'com-pens-ate' → dengeyi yeniden kurmak.",
+    ex:"Nothing can <b>compensate</b> for the loss of time.",
+    syn:["make up for","offset","reimburse"], ant:["worsen","deprive"] },
+  { w:"diminish", pos:"v", tr:"azalmak, azaltmak",
+    cue:"'di-mini-sh' → minik hâle gelmek.",
+    ex:"The pain gradually <b>diminished</b>.",
+    syn:["decrease","reduce","lessen"], ant:["increase","grow","expand"] },
+  { w:"crucial", pos:"adj", tr:"çok önemli, kritik",
+    cue:"'cross' benzeri → kavşak noktası, kritik eşik.",
+    ex:"Timing is <b>crucial</b> in this experiment.",
+    syn:["vital","essential","pivotal"], ant:["trivial","minor","unimportant"] },
+  { w:"allocate", pos:"v", tr:"tahsis etmek, ayırmak",
+    cue:"'al-locate' → bir yere yerleştirmek, pay vermek.",
+    ex:"The government will <b>allocate</b> more funds to education.",
+    syn:["assign","distribute","apportion"], ant:["withhold","retain"] },
+  { w:"reluctance", pos:"n", tr:"isteksizlik",
+    cue:"'reluctant' ismin hâli → geri durma hâli.",
+    ex:"He agreed with obvious <b>reluctance</b>.",
+    syn:["unwillingness","hesitation"], ant:["eagerness","willingness"] },
+  { w:"subsequent", pos:"adj", tr:"sonraki, müteakip",
+    cue:"'sub-' (alt/sonra) + 'sequent' (gelen) → sonra gelen.",
+    ex:"<b>Subsequent</b> events proved him right.",
+    syn:["following","later","ensuing"], ant:["previous","prior","preceding"] },
+  { w:"constitute", pos:"v", tr:"oluşturmak, teşkil etmek",
+    cue:"'con-stitute' → bir araya gelip yapıyı kurmak.",
+    ex:"Women <b>constitute</b> half of the workforce.",
+    syn:["form","compose","make up"], ant:["dissolve","break up"] },
+  { w:"profound", pos:"adj", tr:"derin, köklü",
+    cue:"'pro-found' → temellere inen, dip.",
+    ex:"The book had a <b>profound</b> effect on me.",
+    syn:["deep","intense","far-reaching"], ant:["shallow","superficial"] },
+  { w:"adverse", pos:"adj", tr:"olumsuz, ters",
+    cue:"'ad-verse' → karşı yöne dönen.",
+    ex:"<b>Adverse</b> weather delayed the flight.",
+    syn:["unfavorable","negative","harmful"], ant:["favorable","beneficial"] },
+  { w:"facilitate", pos:"v", tr:"kolaylaştırmak",
+    cue:"'facile' (kolay) kökü → kolay hâle getirmek.",
+    ex:"The new app <b>facilitates</b> communication.",
+    syn:["ease","assist","expedite"], ant:["hinder","obstruct","impede"] },
+  { w:"presume", pos:"v", tr:"varsaymak, sanmak",
+    cue:"'pre-' (ön) + 'sume' (almak) → önceden kabul etmek.",
+    ex:"I <b>presume</b> you have read the report.",
+    syn:["assume","suppose","postulate"], ant:["verify","prove"] },
+  { w:"ambiguous", pos:"adj", tr:"(tekrar) belirsiz",
+    cue:"İki anlamlılık → netlik yok.",
+    ex:"The contract's wording is <b>ambiguous</b>.",
+    syn:["vague","obscure"], ant:["clear","definite"] },
+  { w:"inevitably", pos:"adv", tr:"kaçınılmaz olarak",
+    cue:"'inevitable' zarf hâli.",
+    ex:"Prices will <b>inevitably</b> rise.",
+    syn:["unavoidably","necessarily"], ant:["avoidably"] },
+  { w:"reluctantly", pos:"adv", tr:"isteksizce",
+    cue:"'reluctant' zarf hâli.",
+    ex:"She <b>reluctantly</b> agreed to help.",
+    syn:["unwillingly","hesitantly"], ant:["eagerly","willingly"] },
+  { w:"deterioration", pos:"n", tr:"kötüleşme, bozulma",
+    cue:"'deteriorate' ismin hâli.",
+    ex:"The <b>deterioration</b> of air quality worries experts.",
+    syn:["decline","worsening"], ant:["improvement","recovery"] },
+  { w:"comprehensively", pos:"adv", tr:"kapsamlı biçimde",
+    cue:"'comprehensive' zarf hâli.",
+    ex:"The topic was <b>comprehensively</b> covered.",
+    syn:["thoroughly","extensively"], ant:["partially","superficially"] },
+  { w:"enhancement", pos:"n", tr:"iyileştirme, geliştirme",
+    cue:"'enhance' ismin hâli.",
+    ex:"The <b>enhancement</b> of skills takes time.",
+    syn:["improvement","upgrade"], ant:["reduction","impairment"] },
+  { w:"advocacy", pos:"n", tr:"savunuculuk",
+    cue:"'advocate' ismin hâli.",
+    ex:"Her <b>advocacy</b> for animals is inspiring.",
+    syn:["support","promotion"], ant:["opposition"] },
+  { w:"compensation", pos:"n", tr:"telafi, tazminat",
+    cue:"'compensate' ismin hâli.",
+    ex:"He received <b>compensation</b> for the damage.",
+    syn:["reimbursement","recompense"], ant:["loss"] },
+  { w:"allocation", pos:"n", tr:"tahsis, dağıtım",
+    cue:"'allocate' ismin hâli.",
+    ex:"The <b>allocation</b> of resources was fair.",
+    syn:["distribution","assignment"], ant:["withholding"] },
+  { w:"adversely", pos:"adv", tr:"olumsuz biçimde",
+    cue:"'adverse' zarf hâli.",
+    ex:"The medicine affected him <b>adversely</b>.",
+    syn:["negatively","unfavorably"], ant:["positively","favorably"] },
+];
+
+/* ---------------- YARDIMCILAR ---------------- */
+const $ = id => document.getElementById(id);
+const shuffle = a => a.slice().sort(() => Math.random() - .5);
+const pick = (arr, n) => shuffle(arr).slice(0, n);
+
+let learnedIndex = 0;
+let quizList = [];
+let quizIndex = 0;
+let score = 0;
+let wrongList = JSON.parse(localStorage.getItem("ydt_wrong") || "[]");
+const answered = new Set();
+
+/* ---------------- ÖĞREN GÖRÜNÜMÜ ---------------- */
+function renderLearn() {
+  const item = WORDS[learnedIndex];
+  $("view-learn").innerHTML = `
+    <div class="word">${item.w}<span class="pos">(${item.pos})</span></div>
+    <div class="tr">🇹🇷 ${item.tr}</div>
+    <div class="block">
+      <h3>💡 Çağrışım</h3>
+      <p>${item.cue}</p>
+    </div>
+    <div class="block">
+      <h3>📖 Örnek Cümle</h3>
+      <p class="example">${item.ex}</p>
+    </div>
+    <div class="block">
+      <h3>🔗 Eş / Yakın Anlam</h3>
+      <p>${item.syn.join(" · ")}</p>
+    </div>
+    <div class="block">
+      <h3>↔️ Zıt Anlam</h3>
+      <p>${item.ant.join(" · ")}</p>
+    </div>
+    <div class="nav">
+      <button id="prevBtn" ${learnedIndex === 0 ? "disabled" : ""}>← Önceki</button>
+      <button id="nextBtn" class="primary">${learnedIndex === WORDS.length - 1 ? "Başa Dön" : "Sonraki →"}</button>
+    </div>
+    <div class="counter">${learnedIndex + 1} / ${WORDS.length}</div>
+  `;
+  $("prevBtn").onclick = () => { learnedIndex--; renderLearn(); };
+  $("nextBtn").onclick = () => {
+    learnedIndex = (learnedIndex + 1) % WORDS.length;
+    renderLearn();
+  };
+}
+
+/* ---------------- SORU ÜRETİCİ ---------------- */
+function makeQuestion(word, allWords) {
+  // 4 tip: synonym, antonym, cloze, completion
+  const type = ["syn","ant","cloze","comp"][Math.floor(Math.random()*4)];
+  let stem, correct, options, qtypeLabel;
+
+  if (type === "syn") {
+    qtypeLabel = "YAKIN ANLAM";
+    stem = `Choose the option <b>closest in meaning</b> to the underlined word:<br><br>"The manager decided to <u>${word.w}</u> the outdated policy."`;
+    correct = word.syn[0];
+    const dist = pick(
+      allWords.filter(x => x.w !== word.w).flatMap(x => x.syn),
+      3
+    );
+    options = shuffle([correct, ...dist]);
+  }
+  else if (type === "ant") {
+    qtypeLabel = "ZIT ANLAM";
+    stem = `Choose the option that is <b>opposite in meaning</b> to the underlined word:<br><br>"The situation continued to <u>${word.w}</u> despite efforts."`;
+    correct = word.ant[0];
+    const dist = pick(
+      allWords.filter(x => x.w !== word.w).flatMap(x => x.syn),
+      3
+    );
+    options = shuffle([correct, ...dist]);
+  }
+  else if (type === "cloze") {
+    qtypeLabel = "BOŞLUK DOLDURMA";
+    const sentence = word.ex.replace(new RegExp(`<b>${word.w}</b>`, "i"), "______");
+    stem = `Fill in the blank with the most appropriate word:<br><br>"${sentence}"`;
+    correct = word.w;
+    const dist = pick(
+      allWords.filter(x => x.w !== word.w).map(x => x.w),
+      3
+    );
+    options = shuffle([correct, ...dist]);
+  }
+  else {
+    qtypeLabel = "CÜMLE TAMAMLAMA";
+    const shortDef = word.tr.split(",")[0].trim();
+    stem = `Which sentence best illustrates the meaning of <b>${word.w}</b> (${shortDef})?`;
+    correct = word.ex.replace(/<\/?b>/g, "");
+    const dist = pick(
+      allWords.filter(x => x.w !== word.w).map(x => x.ex.replace(/<\/?b>/g, "")),
+      3
+    );
+    options = shuffle([correct, ...dist]);
+  }
+
+  return { word, qtypeLabel, stem, correct, options };
+}
+
+/* ---------------- QUIZ GÖRÜNÜMÜ ---------------- */
+function startQuiz() {
+  quizList = shuffle(WORDS).map(w => makeQuestion(w, WORDS));
+  quizIndex = 0; score = 0; answered.clear();
+  renderQuiz();
+  switchTab("quiz");
+}
+
+function renderQuiz() {
+  if (quizIndex >= quizList.length) return renderQuizEnd();
+  const q = quizList[quizIndex];
+  $("view-quiz").innerHTML = `
+    <div class="progress"><div style="width:${(quizIndex/quizList.length)*100}%"></div></div>
+    <div class="qtype">${q.qtypeLabel}</div>
+    <div class="stem">${q.stem}</div>
+    <div class="options" id="opts">
+      ${q.options.map((o,i)=>`<button data-i="${i}">${i+1}. ${o}</button>`).join("")}
+    </div>
+    <div id="fb"></div>
+    <div class="score">Soru ${quizIndex+1} / ${quizList.length} · Skor: ${score}</div>
+    <div class="nav"><button id="nextQ" class="primary" style="display:none">Sonraki →</button></div>
+  `;
+  document.querySelectorAll("#opts button").forEach(btn => {
+    btn.onclick = () => answer(btn, q);
+  });
+}
+
+function answer(btn, q) {
+  if (answered.has(quizIndex)) return;
+  answered.add(quizIndex);
+  const chosen = btn.textContent.replace(/^\d+\.\s/, "");
+  const isCorrect = chosen === q.correct;
+  document.querySelectorAll("#opts button").forEach(b => {
+    b.disabled = true;
+    const txt = b.textContent.replace(/^\d+\.\s/, "");
+    if (txt === q.correct) b.classList.add("correct");
+  });
+  if (!isCorrect) {
+    btn.classList.add("wrong");
+    addWrong(q.word.w);
+  } else score++;
+
+  const fb = $("fb");
+  fb.className = "feedback " + (isCorrect ? "ok" : "no");
+  fb.innerHTML = isCorrect
+    ? `✅ <b>Doğru!</b><br>${q.word.w} — ${q.word.tr}`
+    : `❌ <b>Yanlış.</b> Doğru cevap: <b>${q.correct}</b><br>
+       ${q.word.w} — ${q.word.tr}<br><i>${q.word.ex}</i>`;
+
+  const nextBtn = $("nextQ");
+  nextBtn.style.display = "block";
+  nextBtn.onclick = () => { quizIndex++; renderQuiz(); };
+}
+
+function renderQuizEnd() {
+  const pct = Math.round((score / quizList.length) * 100);
+  $("view-quiz").innerHTML = `
+    <h2 style="color:#38bdf8">Test Tamamlandı 🎉</h2>
+    <p style="margin:14px 0;font-size:1.1rem">Skorun: <b>${score} / ${quizList.length}</b> (%${pct})</p>
+    <p style="color:#94a3b8">${pct >= 80 ? "Harika! YDT seviyesine yakınsın." : pct >= 50 ? "İyi gidiyorsun, tekrar listesine bak." : "Tekrar sekmesinden yanlışlarını çalışmalısın."}</p>
+    <div class="nav">
+      <button id="againBtn" class="primary">🔁 Yeni Test</button>
+      <button id="reviewBtn">Yanlışları Gör</button>
+    </div>
+  `;
+  $("againBtn").onclick = startQuiz;
+  $("reviewBtn").onclick = () => switchTab("review");
+}
+
+/* ---------------- YANLIŞ LİSTESİ ---------------- */
+function addWrong(w) {
+  if (!wrongList.includes(w)) {
+    wrongList.push(w);
+    localStorage.setItem("ydt_wrong", JSON.stringify(wrongList));
+    updateReviewCount();
+  }
+}
+
+function renderReview() {
+  updateReviewCount();
+  if (wrongList.length === 0) {
+    $("view-review").innerHTML = `<div class="empty">Henüz yanlış yapmadın 👏<br>Test bölümünden başla.</div>`;
+    return;
+  }
+  const items = wrongList.map(w => {
+    const item = WORDS.find(x => x.w === w);
+    return `<div class="review-item">
+      <b>${item.w}</b> <span>(${item.pos}) — ${item.tr}</span><br>
+      <span>💡 ${item.cue}</span><br>
+      <span>📖 ${item.ex.replace(/<\/?b>/g,"")}</span>
+    </div>`;
+  }).join("");
+  $("view-review").innerHTML = `
+    <h3 style="color:#fbbf24;margin-bottom:10px">🔁 Tekrar Listesi (${wrongList.length})</h3>
+    ${items}
+    <div class="nav"><button id="clearBtn">Listeyi Temizle</button></div>
+  `;
+  $("clearBtn").onclick = () => {
+    wrongList = []; localStorage.removeItem("ydt_wrong");
+    renderReview(); updateReviewCount();
+  };
+}
+
+function updateReviewCount() { $("reviewCount").textContent = wrongList.length; }
+
+/* ---------------- SEKME YÖNETİMİ ---------------- */
+function switchTab(name) {
+  ["learn","quiz","review"].forEach(t => {
+    $("view-" + t).style.display = t === name ? "block" : "none";
+    $("tab-" + t).classList.toggle("active", t === name);
+  });
+  if (name === "quiz" && quizList.length === 0) startQuiz();
+  if (name === "review") renderReview();
+}
+
+$("tab-learn").onclick  = () => switchTab("learn");
+$("tab-quiz").onclick   = () => { quizList = []; switchTab("quiz"); };
+$("tab-review").onclick = () => switchTab("review");
+
+/* ---------------- KLAVYE ---------------- */
+document.addEventListener("keydown", e => {
+  if ($("view-quiz").style.display === "none") return;
+  if (["1","2","3","4"].includes(e.key)) {
+    const btn = document.querySelectorAll("#opts button")[+e.key - 1];
+    if (btn && !btn.disabled) btn.click();
+  }
+  if (e.key === "Enter") {
+    const n = $("nextQ"); if (n && n.style.display !== "none") n.click();
+  }
+});
+
+/* ---------------- BAŞLAT ---------------- */
+renderLearn();
+updateReviewCount();
+</script>
+</body>
+</html>
